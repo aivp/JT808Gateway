@@ -12,6 +12,7 @@ using JT808.Protocol.Extensions;
 using JT808.Gateway.Client.Services;
 using JT808.Gateway.Client.Metadata;
 using Microsoft.Extensions.DependencyInjection;
+using System.Net.Http;
 
 namespace JT808.Gateway.Client
 {
@@ -23,12 +24,16 @@ namespace JT808.Gateway.Client
         private readonly JT808Serializer JT808Serializer;
         private readonly JT808SendAtomicCounterService SendAtomicCounterService;
         private readonly JT808ReceiveAtomicCounterService ReceiveAtomicCounterService;
+        private readonly IServiceProvider serviceProvider;
+        private EndPoint endPoint;
         private bool socketState = true;
+
         public JT808DeviceConfig DeviceConfig { get; }
         public JT808TcpClient(
             JT808DeviceConfig deviceConfig,
             IServiceProvider serviceProvider)
         {
+            this.serviceProvider = serviceProvider;
             DeviceConfig = deviceConfig;
             SendAtomicCounterService = serviceProvider.GetRequiredService<JT808SendAtomicCounterService>();
             ReceiveAtomicCounterService = serviceProvider.GetRequiredService<JT808ReceiveAtomicCounterService>();
@@ -41,6 +46,7 @@ namespace JT808.Gateway.Client
             try
             {
                 await clientSocket.ConnectAsync(remoteEndPoint);
+                this.endPoint = remoteEndPoint;
                 return true;
             }
             catch (Exception e)
@@ -117,8 +123,7 @@ namespace JT808.Gateway.Client
                 }
                 catch (Exception ex)
                 {
-                    Close();
-                    break;
+                    Reconnect();
                 }
                 finally
                 {
@@ -150,6 +155,16 @@ namespace JT808.Gateway.Client
                             ReceiveAtomicCounterService.MsgSuccessIncrement();
                             if (Logger.IsEnabled(LogLevel.Debug)) Logger.LogDebug($"[Atomic Success Counter]:{ReceiveAtomicCounterService.MsgSuccessCount}");
                             if (Logger.IsEnabled(LogLevel.Trace)) Logger.LogTrace($"[Accept Hex {session.RemoteEndPoint}]:{package.OriginalData.ToArray().ToHexString()}");
+
+                            try
+                            {
+                                var consumerService = serviceProvider.GetRequiredService<IJT808MessageConsumer>();
+                                consumerService.Consumer(package);
+                            }
+                            catch (Exception)
+                            {
+
+                            }
                         }
                         catch (JT808Exception ex)
                         {
@@ -179,6 +194,12 @@ namespace JT808.Gateway.Client
         public async ValueTask SendAsync(JT808ClientRequest message)
         {
             if (disposed) return;
+
+            if (!IsOpen)
+            {
+                Reconnect();
+            }
+
             if (IsOpen && socketState)
             {
                 if (message.Package != null)
@@ -276,6 +297,17 @@ namespace JT808.Gateway.Client
                 }
                 return false;
             } 
+        }
+
+        public bool Reconnect()
+        {
+            int maxTry = 10;
+            while (!clientSocket.Connected && --maxTry >= 0)
+            {
+                clientSocket.Connect(endPoint);
+            }
+
+            return clientSocket.Connected;
         }
     }
 }

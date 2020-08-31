@@ -33,20 +33,24 @@ namespace JT808.Gateway.Client
         {
             if(dict.TryGetValue(deviceConfig.TerminalPhoneNo,out var client))
             {
-                return client;
-            }
-            else
-            {
-                JT808TcpClient jT808TcpClient = new JT808TcpClient(deviceConfig, serviceProvider);
-                var successed= await jT808TcpClient.ConnectAsync(new IPEndPoint(IPAddress.Parse(deviceConfig.TcpHost), deviceConfig.TcpPort));
-                if (successed)
+                if(client.IsOpen)
                 {
-                    jT808TcpClient.StartAsync(cancellationToken);
-                    dict.TryAdd(deviceConfig.TerminalPhoneNo, jT808TcpClient);
-                    return jT808TcpClient;
+                    return client;
                 }
-                return default;
+
+                dict.TryRemove(deviceConfig.TerminalPhoneNo, out var _);
             }
+
+
+            JT808TcpClient jT808TcpClient = new JT808TcpClient(deviceConfig, serviceProvider);
+            var successed = await jT808TcpClient.ConnectAsync(new IPEndPoint(IPAddress.Parse(deviceConfig.TcpHost), deviceConfig.TcpPort));
+            if (successed)
+            {
+                jT808TcpClient.StartAsync(cancellationToken);
+                dict.TryAdd(deviceConfig.TerminalPhoneNo, jT808TcpClient);
+                return jT808TcpClient;
+            }
+            return default;
         }
 
         public void Dispose()

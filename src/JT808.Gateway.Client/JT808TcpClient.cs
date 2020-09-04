@@ -304,7 +304,14 @@ namespace JT808.Gateway.Client
             int maxTry = 10;
             while (!clientSocket.Connected && --maxTry >= 0)
             {
-                clientSocket.Connect(endPoint);
+                try
+                {
+                    clientSocket.Connect(endPoint);
+                }
+                catch (Exception)
+                {
+
+                }
             }
 
             return clientSocket.Connected;

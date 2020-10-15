@@ -31,14 +31,15 @@ namespace JT808.Gateway.Client
 
         public async ValueTask<JT808TcpClient> Create(JT808DeviceConfig deviceConfig, CancellationToken cancellationToken)
         {
-            if(dict.TryGetValue(deviceConfig.TerminalPhoneNo,out var client))
+            string key = $"{deviceConfig.TerminalPhoneNo}{deviceConfig.TcpHost}{deviceConfig.TcpPort}";
+            if (dict.TryGetValue(key,out var client))
             {
                 if(client.IsOpen)
                 {
                     return client;
                 }
 
-                dict.TryRemove(deviceConfig.TerminalPhoneNo, out var _);
+                dict.TryRemove(key, out var _);
             }
 
 
@@ -47,7 +48,7 @@ namespace JT808.Gateway.Client
             if (successed)
             {
                 jT808TcpClient.StartAsync(cancellationToken);
-                dict.TryAdd(deviceConfig.TerminalPhoneNo, jT808TcpClient);
+                dict.TryAdd(key, jT808TcpClient);
                 return jT808TcpClient;
             }
             return default;

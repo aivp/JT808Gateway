@@ -161,9 +161,9 @@ namespace JT808.Gateway.Client
                                 var consumerService = serviceProvider.GetRequiredService<IJT808MessageConsumer>();
                                 consumerService.Consumer(package);
                             }
-                            catch (Exception)
+                            catch (Exception ex)
                             {
-
+                                Logger.LogError($"{ex.Message}{ex.StackTrace}");
                             }
                         }
                         catch (JT808Exception ex)
@@ -238,6 +238,21 @@ namespace JT808.Gateway.Client
                         Logger.LogError(ex.Message);
                     }
                 }
+            }
+        }
+
+        public async ValueTask SendAsync(byte[] sendData)
+        {
+            if (disposed) return;
+
+            if (!IsOpen)
+            {
+                Reconnect();
+            }
+
+            if (IsOpen && socketState)
+            {
+                await clientSocket.SendAsync(sendData, SocketFlags.None);
             }
         }
 

@@ -13,6 +13,7 @@ using JT808.Gateway.Client.Services;
 using JT808.Gateway.Client.Metadata;
 using Microsoft.Extensions.DependencyInjection;
 using System.Net.Http;
+using System.Linq;
 
 namespace JT808.Gateway.Client
 {
@@ -207,6 +208,7 @@ namespace JT808.Gateway.Client
                     try
                     {
                         var sendData = JT808Serializer.Serialize(message.Package, minBufferSize: message.MinBufferSize);
+                        var byteStr = string.Concat(sendData.Select(i => i.ToString("X2")));
                         //clientSocket.Send(sendData);
                         await clientSocket.SendAsync(sendData, SocketFlags.None);
                         SendAtomicCounterService.MsgSuccessIncrement();

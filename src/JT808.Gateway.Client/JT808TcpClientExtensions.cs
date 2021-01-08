@@ -14,6 +14,11 @@ namespace JT808.Gateway.Client
     {
         public static async ValueTask SendAsync(this JT808TcpClient client, JT808Package package, int minBufferSize = 4096)
         {
+            if (client == null)
+            {
+                return;
+            }
+
             package.Header.TerminalPhoneNo = client.DeviceConfig.TerminalPhoneNo;
             JT808ClientRequest request = new JT808ClientRequest(package, minBufferSize);
             await client.SendAsync(request);
